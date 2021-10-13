@@ -1,0 +1,14 @@
+{
+  "bulb_type": "RGB-9",
+  "brightness": 10,
+  "method": "light",
+  "sunset": "true",
+  "time": 123456789,
+  "auto": 1,
+  "keepalive":60,
+  "gpio_r":"gpio_1",
+  "RGB_R":128,
+  "RGB_G":255,
+  "RGB_B":78
+
+}
