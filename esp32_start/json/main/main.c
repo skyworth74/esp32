@@ -46,7 +46,8 @@ int serialmethod(char * dest ,char *src ,unsigned int len)
 			src++;
 		}
         len--;
-	}		
+	}
+	*dest='\0';
 	return 0;
 }
 
