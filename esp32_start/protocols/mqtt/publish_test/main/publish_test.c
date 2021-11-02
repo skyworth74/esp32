@@ -407,7 +407,7 @@ static void mqtt_app_start(void)
                      clientId, ali_username, ali_password);	
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle = mqtt_event_handler,
-        .cert_pem = (const char *)mqtt_eclipse_org_pem_start,
+        //.cert_pem = (const char *)mqtt_eclipse_org_pem_start,
         .username =ali_username,//"emqx",
         .password = ali_password,//public",//https://www.emqx.com/zh/blog/esp8266-connects-to-the-public-mqtt-broker
         .client_id= clientId,//https://blog.csdn.net/chen244798611/article/details/97972236
@@ -480,18 +480,26 @@ void app_main(void)
 	serialmethod(uri ,json_buf ,strlen(json_buf));
 	ESP_LOGI(TAG, "json:%s\n",uri);
     memset(uri,0,sizeof(uri));
-    mqtt_app_start();
-    public_setup();
+    mqtt_app_start();    
 	#ifdef EMQX_CONFIG  	
 			snprintf(uri,sizeof(uri),"%s:%s","mqtt://ucda1c7c.cn-shenzhen.emqx.cloud","11407");
             ESP_LOGI(TAG, "[TCP transport] Startup..uri:%s",uri);//"mqtt://broker-cn.emqx.io:1883");//CONFIG_EXAMPLE_BROKER_TCP_URI);
-            esp_mqtt_client_set_uri(mqtt_client,uri);// "mqtt://broker-cn.emqx.io:1883");//CONFIG_EXAMPLE_BROKER_TCP_URI);
+            if (NULL!=mqtt_client)
+            {
+			    esp_mqtt_client_set_uri(mqtt_client,uri);// "mqtt://broker-cn.emqx.io:1883");//CONFIG_EXAMPLE_BROKER_TCP_URI);
+            }else{
+                ESP_LOGI(TAG, "mqtt_client is null");
+            }
+            
     #else
 		    snprintf(uri,sizeof(uri),"%s:%s","mqtt://a1zHzM6aRR7.iot-as-mqtt.cn-shanghai.aliyuncs.com","1883");
 		    ESP_LOGI(TAG, "[TCP transport] Startup..uri:%s",uri);//"mqtt://broker-cn.emqx.io:1883");//CONFIG_EXAMPLE_BROKER_TCP_URI);
 		    esp_mqtt_client_set_uri(mqtt_client,uri);// "mqtt://broker-cn.emqx.io:1883");//CONFIG_EXAMPLE_BROKER_TCP_URI);
 	 #endif
-	 esp_mqtt_client_start(mqtt_client);
+	 if (NULL!=mqtt_client){
+	     esp_mqtt_client_start(mqtt_client);
+	 }
+	public_setup();
 	#if 0
     while (1) {
 		if (0==flag){
@@ -793,5 +801,5 @@ void public_setup(void)
 	int delaytime =100;
 	XtimeInit();
     xTaskCreate(public_thread,"public_thread",1024*4,&delaytime,5,&taskHandle);
-	xTaskCreate(mqtt_process,"mqtt_process",1024*4,&delaytime,6,NULL);
+	//xTaskCreate(mqtt_process,"mqtt_process",1024*4,&delaytime,6,NULL);
 }
