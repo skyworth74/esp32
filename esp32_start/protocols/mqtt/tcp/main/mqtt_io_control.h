@@ -1,5 +1,6 @@
 #ifndef __MQTT_IO_CONTROL__
 #define __MQTT_IO_CONTROL__
+#include "mqtt_gpio_ctrl.h"
 #define EMQX_CONFIG
 #define ARRAY_SIZE(x)   (sizeof(x)/sizeof((x)[0]))
 
@@ -33,6 +34,7 @@ void process_json(const char *buff, unsigned int lens,const char *topic);
 
 void system_init_setup(void);
 void msg_send(const char *payload,const char *topic,mqtt_io_cmd ucMessageID,char lastwill,unsigned char qos, unsigned int lens,unsigned int parg);
+int light_pwm_send(xt_rgb light_pwm);
 
 
 

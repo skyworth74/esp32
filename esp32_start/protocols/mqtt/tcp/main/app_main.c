@@ -129,7 +129,7 @@ static void mqtt_app_start(void)
         .password = "123456",//public",//https://www.emqx.com/zh/blog/esp8266-connects-to-the-public-mqtt-broker
         .client_id= "emqx_cloud182439ec",//https://blog.csdn.net/chen244798611/article/details/97972236			
     };
-	snprintf(uri,sizeof(uri),"%s:%s","mqtt://ucda1c7c.cn-shenzhen.emqx.cloud","11407");	
+	snprintf(uri,sizeof(uri),"%s:%s","mqtt://broker-cn.emqx.io","1883");	
 	#else
 	memset(clientId,0,sizeof(clientId));
 	memset(ali_username,0,sizeof(ali_username));

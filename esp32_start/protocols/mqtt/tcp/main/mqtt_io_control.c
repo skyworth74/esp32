@@ -34,6 +34,7 @@
 #include "xjson.h"
 #include "xtimer.h"
 #include "mqtt_gpio_ctrl.h"
+#include "light_attr.h"
 
 QueueHandle_t xMqttQueue;
 static const char *TAG = "MQTT_IO_CONTROL";
@@ -137,12 +138,15 @@ int light_cmd(const char *buf,unsigned int lens,unsigned int pconfig){
 	xt_json root = NULL;
 	char device_model[10]="";
 	int device_state =0;
-    int pwm_r  = 0;
-	int pwm_g  = 0;
-	int pwm_b  = 0;
+    int color  = 0;
+	int light_mode  = 0;
+	//int pwm_b  = 0;
 	int cool = 0;
 	int warm = 0;
-	xt_rgb rgb_pwm={0,0,0,0,0,0};
+	int cct = 2700;
+	int gradient_time_ms =0;
+	int brigheness =0;
+	xt_light_state light_state; //= get_pwm();
 	//unsigned int i =0;
 	//unsigned int index =0xff;
 	if (NULL==buf){
@@ -150,6 +154,7 @@ int light_cmd(const char *buf,unsigned int lens,unsigned int pconfig){
         return -1;
 	}
 	 memset(device_model,0,sizeof(device_model));
+	 memset(&light_state,0,sizeof(xt_light_state));
 	 //memset(name,0,sizeof(name));
 	
 	root=XjsonFromString(buf);
@@ -163,28 +168,34 @@ int light_cmd(const char *buf,unsigned int lens,unsigned int pconfig){
                       sizeof(device_model),
                       "dim");
     XjsonGetInt(root, "state", &device_state, 0);
-	XjsonGetInt(root, "pwm_r", &pwm_r, 0);
-	XjsonGetInt(root, "pwm_g", &pwm_g, 0);
-	XjsonGetInt(root, "pwm_b", &pwm_b, 0);
-	XjsonGetInt(root, "cool", &cool, 0);
-	XjsonGetInt(root, "warm", &warm, 0);
+	XjsonGetInt(root, "color", &color, 0);
+	XjsonGetInt(root, "light_mode", &light_mode, 0);
+	XjsonGetInt(root, "gradient_time_ms", &gradient_time_ms, 0);
+	XjsonGetInt(root, "brightness", &brigheness, 0);
+	//XjsonGetInt(root, "warm", &warm, 0);
+	XjsonGetInt(root, "cct", &cct, 2700);
 	ESP_LOGI(TAG, " model [%s] device_state:[%d]", device_model,device_state);
-	rgb_pwm.rgb_r_pwm = pwm_r&0xFFFF;
-	rgb_pwm.rgb_g_pwm = pwm_g&0xFFFF;
-	rgb_pwm.rgb_b_pwm = pwm_b&0xFFFF;
-	rgb_pwm.rgb_cool_pwm = cool&0xFFFF;
-	rgb_pwm.rgb_warm_pwm = warm&0xFFFF;
+
 	if(1==device_state){
 	    //rgb_gpioctrl(GPIO_OUTPUT_IO_R,LED_ON);
 		//rgb_gpioctrl(GPIO_OUTPUT_IO_G,LED_ON);
 	   // rgb_gpioctrl(GPIO_OUTPUT_IO_B,LED_ON);
 		//rgb_gpioctrl(GPIO_OUTPUT_IO_WARM,LED_ON);
-		gpio_pwm(rgb_pwm);
+		//gpio_pwm(rgb_pwm);
+	    light_state.rgb[0] = (color&0xFF0000)>>16;
+	    light_state.rgb[1] = (color&0xFF00)>>8;
+	    light_state.rgb[2] = color&0xFF;
+		light_state.light_mode = (light_mode_e)light_mode;
+        light_state.cct=cct;
+		light_state.gradient_time_ms =gradient_time_ms;
+		light_state.brightness = (unsigned char)(brigheness&0xff);
+		light_state_send(light_state);
 	}else{
        // rgb_gpioctrl(GPIO_OUTPUT_IO_R,LED_OFF);
 		//rgb_gpioctrl(GPIO_OUTPUT_IO_G,LED_OFF);
 		;//rgb_gpioctrl(GPIO_OUTPUT_IO_B,LED_OFF);
-      gpio_pwm(rgb_pwm);
+      //gpio_pwm(rgb_pwm);
+	   // memset(&rgb_pwm,0,sizeof(xt_rgb));
 	}
 	exit:
 	XjsonDelete(root);
@@ -402,6 +413,7 @@ void system_init_setup(void)
 	if (NULL!=xMqttQueue){
         xTaskCreate(mqtt_io_ctrl_thread,"mqtt_io_ctrl_thread",1024*4,&delaytime,5,&taskHandle);
 	}
-	//xTaskCreate(mqtt_process,"mqtt_process",1024*4,&delaytime,6,NULL);
+	xTaskCreate(light_pwm,"light_pwm",512+128,&delaytime,6,NULL);
+	xTaskCreate(light_multi_func,"light_muiti_func",2048+512,NULL,6,NULL);
 }
 
