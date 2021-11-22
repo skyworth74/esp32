@@ -63,70 +63,65 @@ typedef struct topic_cmd_t{
 }topic_cmd;
 
 #ifdef EMQX_CONFIG
-
-const char *topic_pub_array[]={
-	"testtopic/pub/light/onoff/101",
-	"testtopic/pub/window/onoff",	
-	"testtopic/pub/door/onoff",
-	"testtopic/pub/light/onoff/102",
-	"testtopic/pub/lastwill",
-};
-const char *topic_sub_array[]={
-	"testtopic/sub/light",	
-	"testtopic/sub/window",
-	"testtopic/sub/door",
-	"testtopic/sub/sensor",
-};	
-const topic_cmd json_cmd[]={
+const topic_cmd json_sub_cmd[]={
 {"testtopic/sub/light",                    light_cmd},
 {"testtopic/sub/window",                   window_cmd},
 {"testtopic/sub/door",                     door_cmd},
 {"testtopic/sub/sensor",                  sensor_cmd},
-};	
+};
+const topic_cmd json_pub_cmd[]={
+	{"testtopic/pub/light/onoff/101",NULL},
+	{"testtopic/pub/window/onoff",	NULL},
+	{"testtopic/pub/door/onoff",NULL},
+	{"testtopic/pub/light/onoff/102",NULL},
+	{"testtopic/pub/lastwill",NULL},
+
+
+};
 #endif
 
 char *get_topic_pub_array_0(void)
 {
-return topic_pub_array[0];
+return json_pub_cmd[0].topic;
 }
 
 char *get_topic_pub_array_1(void)
 {
-return topic_pub_array[1];
+return json_pub_cmd[1].topic;
 }
 char *get_topic_pub_array_2(void)
 {
-return topic_pub_array[2];
+return json_pub_cmd[2].topic;
 }
 char *get_topic_pub_array_3(void)
 {
-return topic_pub_array[3];
+return json_pub_cmd[3].topic;
 }
 char *get_topic_pub_array_4(void)
 {
-return topic_pub_array[4];
+return json_pub_cmd[4].topic;
 }
 
 char *get_topic_sub_array_0(void)
 {
-return topic_sub_array[0];
+return json_sub_cmd[0].topic;
 }
 
 char *get_topic_sub_array_1(void)
 {
-return topic_sub_array[1];
+return json_sub_cmd[1].topic;
 }
 char *get_topic_sub_array_2(void)
 {
-return topic_sub_array[2];
+return json_sub_cmd[2].topic;
 }
 char *get_topic_sub_array_3(void)
 {
-return topic_sub_array[3];
+return json_sub_cmd[3].topic;
 }
 char *get_topic_sub_array_4(void)
 {
-return topic_sub_array[4];
+return json_sub_cmd[4].topic;
 }
 
 
@@ -134,7 +129,7 @@ return topic_sub_array[4];
 
 int light_cmd(const char *buf,unsigned int lens,unsigned int pconfig){
 	ESP_LOGI(TAG, "%s", __func__);
-	unsigned char  json[512] = {0};
+	//unsigned char  json[512] = {0};
 	xt_json root = NULL;
 	char device_model[10]="";
 	int device_state =0;
@@ -203,7 +198,7 @@ int light_cmd(const char *buf,unsigned int lens,unsigned int pconfig){
 }
 int window_cmd(const char *buf,unsigned int lens,unsigned int pconfig){
 	ESP_LOGI(TAG, "%s", __func__);
-	unsigned char  json[512] = {0};
+	//unsigned char  json[512] = {0};
 	xt_json root = NULL;
 	
 	char name[32]="";
@@ -259,10 +254,10 @@ int door_cmd(const char *buf,unsigned int lens,unsigned int pconfig){
 	XjsonGetInt(root, "topic_index", &topic_index, 0);
 	    ESP_LOGI(TAG, " room_pos [%s] device_state:[%d]", room_pos,device_state);
 	ucMessageID = (mqtt_io_cmd)cmd;
-	if (topic_index>ARRAY_SIZE(topic_pub_array)){
+	if (topic_index>ARRAY_SIZE(json_pub_cmd)){
     goto exit;
 	}
-    msg_send(room_pos,topic_pub_array[topic_index],ucMessageID,0,0,strlen(room_pos),0);
+    msg_send(room_pos,json_pub_cmd[topic_index].topic,ucMessageID,0,0,strlen(room_pos),0);
 
     exit:
 	XjsonDelete(root);
@@ -334,15 +329,15 @@ void msg_send(const char *payload,const char *topic,mqtt_io_cmd ucMessageID,char
 void process_json(const char *buff, unsigned int lens,const char *topic) {
     unsigned char index =0;
 	unsigned char i =0;
-	for (i=0;i<ARRAY_SIZE(json_cmd);i++){//sizeof(topic_array)/sizeof(topic_array[0])//
+	for (i=0;i<ARRAY_SIZE(json_sub_cmd);i++){//sizeof(topic_array)/sizeof(topic_array[0])//
 		//ESP_LOGI(TAG, "  topic:[%s]",topic);
-        if(0==strcmp(topic,json_cmd[i].topic)){
+        if(0==strcmp(topic,json_sub_cmd[i].topic)){
             index= i;
-			ESP_LOGI(TAG, " find [%d] topic:[%s]",index,json_cmd[index].topic);
-		    json_cmd[index].func(buff,lens,0);
+			ESP_LOGI(TAG, " find [%d] topic:[%s]",index,json_sub_cmd[index].topic);
+		    json_sub_cmd[index].func(buff,lens,0);
 			break;
         }else{
-			ESP_LOGI(TAG, " coould notfind [%d] topic:[%s]",i,json_cmd[i].topic);
+			ESP_LOGI(TAG, " coould notfind [%d] topic:[%s]",i,json_sub_cmd[i].topic);
 
         	}
 	}
@@ -382,10 +377,11 @@ void mqtt_io_ctrl_thread(void *parg)
 	   case MQTT_IO_RESPONSE:
 	   	break;
 	   case MQTT_IO_SUBSCRIBE:
-       msg_id = esp_mqtt_client_subscribe(client, pxRxedMessage->topic, 0);
-       ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+       msg_id = esp_mqtt_client_subscribe(client,pxRxedMessage->topic, 0);
+	   ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d topic:%s", msg_id,pxRxedMessage->topic);
 		break;
 	   case MQTT_IO_UNSUBSCRIBE:
+	   	esp_mqtt_client_unsubscribe(client, pxRxedMessage->topic);
 	   	break;
 	   case MQTT_IO_PUBLISH:
 	   msg_id = esp_mqtt_client_publish(client, pxRxedMessage->topic, pxRxedMessage->payload, strlen(pxRxedMessage->payload), pxRxedMessage->qos, pxRxedMessage->lastwill);
