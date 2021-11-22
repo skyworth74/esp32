@@ -40,6 +40,9 @@
 #define PWM_STEP_MS 10      					//每10ms更新一次pwm输出
 
 
+#define PWM(X) (8192*(X)/255)
+#define RGB(X) ((X)*255/8192)
+
 typedef struct light_attr_cmd_s{
 char *event;
 int (*light_attr)(unsigned char*buff,unsigned int lens);
@@ -122,6 +125,7 @@ void light_multi_func(void *parg)
 	xt_light_state light_state;
 	xt_rgb light_pwm;
 	xt_rgb target_pwm;
+	xt_rgb *current_pwm = &light_pwm;
 	//float gain = 0;
 	unsigned int time =0;
 	//unsigned int time_previous = 0;
@@ -130,7 +134,7 @@ void light_multi_func(void *parg)
 	int result = pdFALSE;
 	unsigned char step = 0;
 	unsigned int rand =0;
-	unsigned char brightness =100;
+	unsigned char brightness =100;	
     xLight_state_queue = xQueueCreate(10,sizeof(xt_light_state));
 	memset(&light_state,0,sizeof(xt_light_state));
 	memset(&light_pwm,0,sizeof(xt_rgb));
@@ -144,6 +148,7 @@ void light_multi_func(void *parg)
        if (NULL!=xLight_state_queue){
 	       result = xQueueReceive(xLight_state_queue,&light_state,10);
        }
+	   //ESP_LOGI(TAG, "watermard:%d",uxTaskGetStackHighWaterMark(NULL));
 	   light_mode = light_state.light_mode;
 	   brightness = light_state.brightness;
 	   switch(light_mode){
@@ -152,7 +157,7 @@ void light_multi_func(void *parg)
             break;
 	   	}
 	   	if (pdTRUE==result){
-		target_pwm.rgb_r_pwm=255;//计算目标值
+		target_pwm.rgb_r_pwm=PWM(255);//计算目标值
 		target_pwm.rgb_g_pwm=0;
 		target_pwm.rgb_b_pwm=0;
 		XtimerStop(sg_pwm_timer);
@@ -162,7 +167,7 @@ void light_multi_func(void *parg)
 		//time_previous = 0;        
 	   	}
 	   if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
-		   step =1;
+		   light_state_response(light_state);
 		   gradient_time_ms=light_state.gradient_time_ms;
 	   }
 
@@ -173,7 +178,7 @@ void light_multi_func(void *parg)
 	   	}
 	   	if (pdTRUE==result){
 		target_pwm.rgb_r_pwm=0;//计算目标值
-		target_pwm.rgb_g_pwm=255;
+		target_pwm.rgb_g_pwm=PWM(255);
 		target_pwm.rgb_b_pwm=0;
 		XtimerStop(sg_pwm_timer);
 		//light_state.cct = 2700;
@@ -182,7 +187,7 @@ void light_multi_func(void *parg)
 		//time_previous = 0;        
 	   	}
 	   if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
-		   step =1;
+		   light_state_response(light_state);
 		   gradient_time_ms=light_state.gradient_time_ms;
 	   }
 
@@ -194,7 +199,7 @@ void light_multi_func(void *parg)
 	   	if (pdTRUE==result){
 		target_pwm.rgb_r_pwm=0;//计算目标值
 		target_pwm.rgb_g_pwm=0;
-		target_pwm.rgb_b_pwm=255;
+		target_pwm.rgb_b_pwm=PWM(255);
 		XtimerStop(sg_pwm_timer);
 		//light_state.cct = 2700;
 		gradient_time_ms=light_state.gradient_time_ms;
@@ -204,6 +209,7 @@ void light_multi_func(void *parg)
 	   if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
 		   step =1;
 		   gradient_time_ms=light_state.gradient_time_ms;
+	       light_state_response(light_state);
 	   }
 
 
@@ -213,15 +219,15 @@ void light_multi_func(void *parg)
             break;
 	   	}
 	   	if (pdTRUE==result){
-		target_pwm.rgb_r_pwm=255;//计算目标值
-		target_pwm.rgb_g_pwm=255;
+		target_pwm.rgb_r_pwm=PWM(255);//计算目标值
+		target_pwm.rgb_g_pwm=PWM(255);
 		target_pwm.rgb_b_pwm=0;
 		XtimerStop(sg_pwm_timer);
 		//light_state.cct = 2700;
 		gradient_time_ms=light_state.gradient_time_ms;		        
 	   	}
 	   if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
-		   step =1;
+		    light_state_response(light_state);
 		   gradient_time_ms=light_state.gradient_time_ms;
 	   }
 
@@ -231,9 +237,9 @@ void light_multi_func(void *parg)
             break;
 	   	}
 	   	if (pdTRUE==result){
-		target_pwm.rgb_r_pwm=255;//计算目标值
+		target_pwm.rgb_r_pwm=PWM(255);//计算目标值
 		target_pwm.rgb_g_pwm=0;
-		target_pwm.rgb_b_pwm=255;
+		target_pwm.rgb_b_pwm=PWM(255);
 		XtimerStop(sg_pwm_timer);
 		//light_state.cct = 2700;
 		gradient_time_ms=light_state.gradient_time_ms;
@@ -241,7 +247,7 @@ void light_multi_func(void *parg)
 		///time_previous = 0;        
 	   	}
 	   if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
-		   step =1;
+		    light_state_response(light_state);
 		   gradient_time_ms=light_state.gradient_time_ms;
 	   }
 
@@ -252,8 +258,8 @@ void light_multi_func(void *parg)
 	   	}
 	   	if (pdTRUE==result){
 		target_pwm.rgb_r_pwm=0;//计算目标值
-		target_pwm.rgb_g_pwm=255;
-		target_pwm.rgb_b_pwm=255;
+		target_pwm.rgb_g_pwm=PWM(255);
+		target_pwm.rgb_b_pwm=PWM(255);
 		XtimerStop(sg_pwm_timer);
 		//light_state.cct = 2700;
 		gradient_time_ms=light_state.gradient_time_ms;
@@ -261,7 +267,7 @@ void light_multi_func(void *parg)
 		//time_previous = 0;        
 	   	}
 	   if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
-		   step =1;
+		    light_state_response(light_state);
 		   gradient_time_ms=light_state.gradient_time_ms;
 	   }
 
@@ -281,7 +287,7 @@ void light_multi_func(void *parg)
 		    //time_previous = 0;        
 	   	}
 	   if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
-		   step =1;
+		    light_state_response(light_state);
 		   gradient_time_ms=light_state.gradient_time_ms;
 	   }		
 	   break;
@@ -293,26 +299,25 @@ void light_multi_func(void *parg)
 	   if (pdTRUE==result){
 	       cal(rgb,light_state.cct);
 		   light_set_brightness(brightness,rgb);
-	       target_pwm.rgb_r_pwm=rgb[0];//计算目标值
-	       target_pwm.rgb_g_pwm=rgb[1];
-	       target_pwm.rgb_b_pwm=rgb[2];
+	       target_pwm.rgb_r_pwm=PWM(rgb[0]);//计算目标值
+	       target_pwm.rgb_g_pwm=PWM(rgb[1]);
+	       target_pwm.rgb_b_pwm=PWM(rgb[2]);
 	       XtimerStop(sg_pwm_timer);
 	       //light_state.cct = 2700;
 	       gradient_time_ms=light_state.gradient_time_ms;
 	       cal(rgb,light_state.cct);
 		   
 	       ESP_LOGI(TAG, "r:%d g:%d b:%d line:%d",rgb[0],rgb[1],rgb[2],__LINE__);  
-	       light_pwm.rgb_r_pwm =light_state.rgb[0];
-	       light_pwm.rgb_g_pwm =light_state.rgb[1];
-	       light_pwm.rgb_b_pwm =light_state.rgb[2];
+	       light_pwm.rgb_r_pwm =PWM(light_state.rgb[0]);
+	       light_pwm.rgb_g_pwm =PWM(light_state.rgb[1]);
+	       light_pwm.rgb_b_pwm =PWM(light_state.rgb[2]);
 	       light_pwm_send(light_pwm);
 	       //time_previous = 0;
 
 	   }
-	   if(XTRUE== set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
-
-
-	  	}
+	   if(XTRUE== set_pwm(current_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
+		   light_state_response(light_state);
+	   }
 	   	
 	  }
 	   break;
@@ -323,25 +328,30 @@ void light_multi_func(void *parg)
 	   if (pdTRUE==result){
 	       cal(rgb,light_state.cct);
 		   light_set_brightness(brightness,rgb);
-	       target_pwm.rgb_r_pwm=rgb[0];//计算目标值
-	       target_pwm.rgb_g_pwm=rgb[1];
-	       target_pwm.rgb_b_pwm=rgb[2];
+	       target_pwm.rgb_r_pwm=PWM(rgb[0]);//计算目标值
+	       target_pwm.rgb_g_pwm=PWM(rgb[1]);
+	       target_pwm.rgb_b_pwm=PWM(rgb[2]);
 	       XtimerStop(sg_pwm_timer);
 	       light_state.cct = 2700;
 	       gradient_time_ms=light_state.gradient_time_ms;
 	       cal(rgb,light_state.cct);
 		   light_set_brightness(brightness,rgb);
 	       ESP_LOGI(TAG, "r:%d g:%d b:%d line:%d",rgb[0],rgb[1],rgb[2],__LINE__);
-	       light_pwm.rgb_r_pwm =light_state.rgb[0];
-	       light_pwm.rgb_g_pwm =light_state.rgb[1];
-	       light_pwm.rgb_b_pwm =light_state.rgb[2];
+	       light_pwm.rgb_r_pwm =PWM(light_state.rgb[0]);
+	       light_pwm.rgb_g_pwm =PWM(light_state.rgb[1]);
+	       light_pwm.rgb_b_pwm =PWM(light_state.rgb[2]);
 	       //light_pwm_send(light_pwm);
 	       //time_previous = 0;
 
 	   }
 
 
-	   set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time);
+	   if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
+	   	    light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);
+            light_state_response(light_state);
+	   }
 	   break;
 	   case LIGHT_WORK:
 	   	if(XTRUE==light_state.is_start){
@@ -355,28 +365,31 @@ void light_multi_func(void *parg)
 		XtimerStop(sg_pwm_timer);
 		//light_state.cct = 2700;
 		gradient_time_ms=light_state.gradient_time_ms;
-		target_pwm.rgb_r_pwm =rgb[0];
-		target_pwm.rgb_g_pwm =rgb[1];
-		target_pwm.rgb_b_pwm =rgb[2];
+		target_pwm.rgb_r_pwm =PWM(rgb[0]);
+		target_pwm.rgb_g_pwm =PWM(rgb[1]);
+		target_pwm.rgb_b_pwm =PWM(rgb[2]);
 		//light_pwm_send(light_pwm);
 		
 		
 	   	}	   	
 	   if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
-		   
+	   		light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);
+		    light_state_response(light_state);
 	   }
 
 	   break;
 	   case LIGHT_PARTY:
 	   	if (pdTRUE==result){
-		target_pwm.rgb_r_pwm=255;//计算目标值
+		target_pwm.rgb_r_pwm=PWM(255);//计算目标值
 		target_pwm.rgb_g_pwm=0;
 		target_pwm.rgb_b_pwm=0;
 		XtimerStop(sg_pwm_timer);
 		//light_state.cct = 2700;
 		gradient_time_ms=light_state.gradient_time_ms;
 		light_pwm.rgb_r_pwm =0;
-		light_pwm.rgb_g_pwm =255;
+		light_pwm.rgb_g_pwm =PWM(255);
 		light_pwm.rgb_b_pwm =0;
 		//light_pwm_send(light_pwm);		
 		step = Xrandom(0, 5);
@@ -385,7 +398,7 @@ void light_multi_func(void *parg)
         case 0:
 		//if (light_state.is_start==XTRUE)	
 		target_pwm.rgb_r_pwm=0;//计算目标值
-		target_pwm.rgb_g_pwm=255;
+		target_pwm.rgb_g_pwm=PWM(255);
 		target_pwm.rgb_b_pwm=0;
 		//XtimerStop(sg_pwm_timer);
 		if(XTRUE==light_state.is_start){
@@ -403,7 +416,7 @@ void light_multi_func(void *parg)
 		case 1:
 		target_pwm.rgb_r_pwm=0;//计算目标值
 		target_pwm.rgb_g_pwm=0;
-		target_pwm.rgb_b_pwm=255;
+		target_pwm.rgb_b_pwm=PWM(255);
 		//XtimerStop(sg_pwm_timer);
 		if(XTRUE==light_state.is_start){
 		    light_state.light_effect_start_flag = 0;
@@ -413,14 +426,18 @@ void light_multi_func(void *parg)
 		//time_previous = 0;			
 		if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
 		    step =Xrandom(0, 5);
+	   	    light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);			
+			 light_state_response(light_state);
 			gradient_time_ms=light_state.gradient_time_ms;
 		}
 
 		break;
 		case 2:
 		target_pwm.rgb_r_pwm=0;//计算目标值
-		target_pwm.rgb_g_pwm=255;
-		target_pwm.rgb_b_pwm=255;
+		target_pwm.rgb_g_pwm=PWM(255);
+		target_pwm.rgb_b_pwm=PWM(255);
 		//XtimerStop(sg_pwm_timer);
 		if(XTRUE==light_state.is_start){
 		    light_state.light_effect_start_flag = 0;
@@ -430,14 +447,18 @@ void light_multi_func(void *parg)
 		//time_previous = 0;			
 		if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
 		    step =Xrandom(0, 5);
+	   	    light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);			
+			 light_state_response(light_state);
 			gradient_time_ms=light_state.gradient_time_ms;
 		}
 
 		break;
 		case 3:
-		target_pwm.rgb_r_pwm=255;//计算目标值
+		target_pwm.rgb_r_pwm=PWM(255);//计算目标值
 		target_pwm.rgb_g_pwm=0;
-		target_pwm.rgb_b_pwm=255;
+		target_pwm.rgb_b_pwm=PWM(255);
 		//XtimerStop(sg_pwm_timer);
 		if(XTRUE==light_state.is_start){
 		    light_state.light_effect_start_flag = 0;
@@ -447,12 +468,16 @@ void light_multi_func(void *parg)
 		//time_previous = 0;			
 		if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
 		    step =Xrandom(0, 5);
+	   	    light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);			
+			 light_state_response(light_state);
 			gradient_time_ms=light_state.gradient_time_ms;
 		}
 
 		break;
 		case 4:
-		target_pwm.rgb_r_pwm=255;//计算目标值
+		target_pwm.rgb_r_pwm=PWM(255);//计算目标值
 		target_pwm.rgb_g_pwm=0;
 		target_pwm.rgb_b_pwm=0;
 		//XtimerStop(sg_pwm_timer);
@@ -464,14 +489,18 @@ void light_multi_func(void *parg)
 		//time_previous = 0;			
 		if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
 		    step =Xrandom(0, 5);
+	   	    light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);			
+			 light_state_response(light_state);
 			gradient_time_ms=light_state.gradient_time_ms;
 		}
 
 		break;
 		case 5:
-		target_pwm.rgb_r_pwm=125;//计算目标值
-		target_pwm.rgb_g_pwm=255;
-		target_pwm.rgb_b_pwm=28;
+		target_pwm.rgb_r_pwm=PWM(125);//计算目标值
+		target_pwm.rgb_g_pwm=PWM(255);
+		target_pwm.rgb_b_pwm=PWM(28);
 		//XtimerStop(sg_pwm_timer);
 		if(XTRUE==light_state.is_start){
 		    light_state.light_effect_start_flag = 0;
@@ -481,6 +510,10 @@ void light_multi_func(void *parg)
 		//time_previous = 0;			
 		if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
 		    step =Xrandom(0, 5);
+	   	    light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);			
+			 light_state_response(light_state);
 			gradient_time_ms=light_state.gradient_time_ms;
 		}
 
@@ -497,14 +530,14 @@ void light_multi_func(void *parg)
 		ESP_LOGI(TAG,"rand=%d",rand);
 	   	if (pdTRUE==result){
 		rand=Xrandom(0, 16777215) ;	
-		target_pwm.rgb_r_pwm=(rand&0xFF0000)>>16;//计算目标值
-		target_pwm.rgb_g_pwm=(rand&0xFF00)>>8;
-		target_pwm.rgb_b_pwm=(rand&0xFF);;
+		target_pwm.rgb_r_pwm=PWM((rand&0xFF0000)>>16);//计算目标值
+		target_pwm.rgb_g_pwm=PWM((rand&0xFF00)>>8);
+		target_pwm.rgb_b_pwm=PWM((rand&0xFF));
 		XtimerStop(sg_pwm_timer);
 		//light_state.cct = 2700;
 		gradient_time_ms=light_state.gradient_time_ms;
 		light_pwm.rgb_r_pwm =0;
-		light_pwm.rgb_g_pwm =255;
+		light_pwm.rgb_g_pwm =PWM(255);
 		light_pwm.rgb_b_pwm =0;
 		//light_pwm_send(light_pwm);
 		        
@@ -518,27 +551,172 @@ void light_multi_func(void *parg)
 		if (XTRUE==set_pwm(&light_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
 		    rand=Xrandom(0, 16777215) ;
 			gradient_time_ms=light_state.gradient_time_ms;
-			target_pwm.rgb_r_pwm=(rand&0xFF0000)>>16;//计算目标值
-		    target_pwm.rgb_g_pwm=(rand&0xFF00)>>8;
-		    target_pwm.rgb_b_pwm=(rand&0xFF);;
+			target_pwm.rgb_r_pwm=PWM((rand&0xFF0000)>>16);//计算目标值
+		    target_pwm.rgb_g_pwm=PWM((rand&0xFF00)>>8);
+		    target_pwm.rgb_b_pwm=PWM((rand&0xFF));
+			light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);
+			 light_state_response(light_state);
 		}
 
 	   	break;
 		case LIGHT_ROMATIC:
         if (pdTRUE==result){
-		rand=Xrandom(0, 16777215) ;	
-		target_pwm.rgb_r_pwm=(rand&0xFF0000)>>16;//计算目标值
-		target_pwm.rgb_g_pwm=(rand&0xFF00)>>8;
-		target_pwm.rgb_b_pwm=(rand&0xFF);;
-		XtimerStop(sg_pwm_timer);
-		//light_state.cct = 2700;
-		gradient_time_ms=light_state.gradient_time_ms;
-		light_pwm.rgb_r_pwm =0;
-		light_pwm.rgb_g_pwm =255;
-		light_pwm.rgb_b_pwm =0;
-		//light_pwm_send(light_pwm);		        
-	   	}
-		
+		    rand=Xrandom(0, 16777215) ;	
+		    target_pwm.rgb_r_pwm=PWM((rand&0xFF0000)>>16);//计算目标值
+		    target_pwm.rgb_g_pwm=PWM((rand&0xFF00)>>8);
+		    target_pwm.rgb_b_pwm=PWM((rand&0xFF));
+		    XtimerStop(sg_pwm_timer);
+		    //light_state.cct = 2700;
+		    gradient_time_ms=light_state.gradient_time_ms;
+		    light_pwm.rgb_r_pwm =0;
+		    light_pwm.rgb_g_pwm =PWM(255);
+		    light_pwm.rgb_b_pwm =0;
+			step =0;
+		}
+		if(XTRUE==light_state.is_start){
+		    light_state.light_effect_start_flag = 0;
+            light_state.is_start =XFALSE;
+		}		
+		switch(step)
+		{
+        case 0:
+		    if (XTRUE==set_pwm(current_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
+		        rand=Xrandom(10, 16777215) ;
+			    gradient_time_ms=light_state.gradient_time_ms;
+			    target_pwm.rgb_r_pwm=PWM((rand&0xFF0000)>>16>0?(rand&0xFF0000)>>16:10);//计算目标值
+		        target_pwm.rgb_g_pwm=0;
+		        target_pwm.rgb_b_pwm=PWM((rand&0xFF));
+				step =1;
+		   	    light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			    light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	            light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);			
+				 light_state_response(light_state);
+		    }			
+			
+		break;
+		case 1:
+		if (XTRUE==set_pwm(current_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
+			rand=Xrandom(10, 16777215) ;
+			gradient_time_ms=light_state.gradient_time_ms;
+			target_pwm.rgb_r_pwm=PWM((rand&0xFF0000)>>16>0?(rand&0xFF0000)>>16:10);//计算目标值
+			target_pwm.rgb_g_pwm=0;
+			target_pwm.rgb_b_pwm=PWM(rand&0xFF);
+			step =2;
+	   	    light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);			
+			 light_state_response(light_state);
+		}
+
+
+		break;
+		case 2:
+		if (XTRUE==set_pwm(current_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
+			rand=Xrandom(10, 16777215) ;
+			gradient_time_ms=light_state.gradient_time_ms;
+			target_pwm.rgb_r_pwm=PWM((rand&0xFF0000)>>16>0?(rand&0xFF0000)>>16:10);//计算目标值
+			target_pwm.rgb_g_pwm=0;
+			target_pwm.rgb_b_pwm=PWM(rand&0xFF);
+			step =3;
+	   	    light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);			
+			 light_state_response(light_state);
+		}
+
+		break;
+		case 3:
+		if (XTRUE==set_pwm(current_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
+			rand=Xrandom(10, 16777215) ;
+			gradient_time_ms=light_state.gradient_time_ms;
+			target_pwm.rgb_r_pwm=PWM((rand&0xFF0000)>>16>0?(rand&0xFF0000)>>16:10);//计算目标值
+			target_pwm.rgb_g_pwm=0;
+			target_pwm.rgb_b_pwm=PWM(rand&0xFF);
+			step =4;
+			 light_state_response(light_state);
+		}
+
+		break;
+		case 4:
+		if (XTRUE==set_pwm(current_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
+			rand=Xrandom(10, 16777215) ;
+			gradient_time_ms=light_state.gradient_time_ms;
+			target_pwm.rgb_r_pwm=PWM((rand&0xFF0000)>>16>0?(rand&0xFF0000)>>16:10);//计算目标值
+			target_pwm.rgb_g_pwm=0;
+			target_pwm.rgb_b_pwm=PWM(rand&0xFF);
+			step =5;
+	   	    light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);			
+			 light_state_response(light_state);
+		}
+
+		break;
+		case 5:
+		if (XTRUE==set_pwm(current_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
+			rand=Xrandom(10, 16777215) ;
+			gradient_time_ms=light_state.gradient_time_ms;
+			target_pwm.rgb_r_pwm=PWM((rand&0xFF0000)>>16>0?(rand&0xFF0000)>>16:10);//计算目标值
+			target_pwm.rgb_g_pwm=0;
+			target_pwm.rgb_b_pwm=PWM(rand&0xFF);
+			step =6;			
+	   	    light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);
+			light_state_response(light_state);
+		}
+
+		break;
+		case 6:
+		if (XTRUE==set_pwm(current_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
+			rand=Xrandom(10, 16777215) ;
+			gradient_time_ms=light_state.gradient_time_ms;
+			target_pwm.rgb_r_pwm=PWM((rand&0xFF0000)>>16>0?(rand&0xFF0000)>>16:10);//计算目标值
+			target_pwm.rgb_g_pwm=0;
+			target_pwm.rgb_b_pwm=PWM(rand&0xFF);
+			step =0;
+	   	    light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	        light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);			
+			 light_state_response(light_state);
+		}
+
+		break;
+		default:
+		    if (XTRUE==set_pwm(current_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){
+		        rand=Xrandom(10, 16777215) ;
+			    gradient_time_ms=light_state.gradient_time_ms;
+			    target_pwm.rgb_r_pwm=PWM((rand&0xFF0000)>>16);//计算目标值
+		        target_pwm.rgb_g_pwm=0;
+		        target_pwm.rgb_b_pwm=PWM(rand&0xFF);
+	   	        light_state.rgb[0]= RGB(target_pwm.rgb_r_pwm);
+			    light_state.rgb[1]= RGB(target_pwm.rgb_g_pwm);
+	            light_state.rgb[2]= RGB(target_pwm.rgb_b_pwm);			
+			    light_state_response(light_state);				
+		    }				
+
+		}		
+		break;
+		case LIGHT_STATE_OFF://延时关灯
+        if (pdTRUE==result){		    
+		    target_pwm.rgb_r_pwm=PWM(0);//计算目标值
+		    target_pwm.rgb_g_pwm=PWM(0);
+		    target_pwm.rgb_b_pwm=PWM(0);
+		    XtimerStop(sg_pwm_timer);
+		    //light_state.cct = 2700;
+		    gradient_time_ms=light_state.gradient_time_ms;
+		}		
+	    if (XTRUE==light_state.light_effect_start_flag){
+            break;
+	    }
+		if (XTRUE==set_pwm(current_pwm,&target_pwm,&gradient_time_ms,&light_state, &time)){            
+			if(XTRUE== light_off_response( )){
+			    ESP_LOGI(TAG,"power off\r\n");
+			}
+		}
+
 		break;
 	   default:
 	   ;
@@ -621,3 +799,54 @@ xt_bool light_set_brightness(xt_u8 level,unsigned char *rgb)
    rgb[2] =255*level/100;
    return XTRUE;
 }
+
+xt_bool light_off_response(xt_void)
+{
+	cJSON *root = NULL;
+	char *json_buf;
+	char payload[50];
+	root=XjsonCreateObject();
+	if (NULL==root){
+		return XFALSE;
+	}
+	memset(payload,0,sizeof(payload));
+	XjsonSetInt(root,"state",0);
+	json_buf=(char *)malloc(50);
+	memset(json_buf,0,50);
+	json_buf=XjsonToStringformatted(root);
+	serialmethod(payload ,json_buf ,strlen(json_buf));
+    cJSON_Delete(root);
+	free(json_buf);
+	json_buf=NULL;
+	root=NULL;
+	msg_send(payload,get_topic_pub_array_0(),MQTT_IO_PUBLISH,0,0,strlen(payload),0);
+	return XTRUE;   
+
+}
+xt_bool light_state_response(xt_light_state light_state)
+{
+	cJSON *root = NULL;
+	char *json_buf;
+	char payload[100];
+	root=XjsonCreateObject();
+	if (NULL==root){
+		return XFALSE;
+	}
+	memset(payload,0,sizeof(payload));
+	XjsonSetInt(root,"state",1);
+	XjsonSetInt(root,"brightness",light_state.brightness);
+	XjsonSetInt(root,"color",light_state.rgb[0]<<16|light_state.rgb[1]<<8|light_state.rgb[2]);
+	XjsonSetInt(root,"light_mode",light_state.light_mode);
+	json_buf=(char *)malloc(100);
+	memset(json_buf,0,100);
+	json_buf=XjsonToStringformatted(root);
+	serialmethod(payload ,json_buf ,strlen(json_buf));
+    cJSON_Delete(root);
+	free(json_buf);
+	json_buf=NULL;
+	root=NULL;
+	msg_send(payload,get_topic_pub_array_0(),MQTT_IO_PUBLISH,0,0,strlen(payload),0);
+	return XTRUE;   
+
+}
+
