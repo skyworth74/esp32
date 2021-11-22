@@ -59,8 +59,8 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
             msg_id = esp_mqtt_client_publish(client, topic_array, "connect mqtt", 0, 1, 0);
             //ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 			topic_array = get_topic_sub_array_0();
-             msg_send("light",topic_array,MQTT_IO_SUBSCRIBE,0,0, 0,0);
-            //msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
+            // msg_send("9999999",topic_array,MQTT_IO_SUBSCRIBE,0,0, 5,0);
+            msg_id = esp_mqtt_client_subscribe(client, topic_array, 0);
             //ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
             //topic_array = get_topic_sub_array_1();
             //msg_send("window",topic_array,MQTT_IO_SUBSCRIBE,0,1,0,0);
@@ -94,12 +94,12 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
             printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
             printf("DATA=%.*s\r\n", event->data_len, event->data);
 			char *receiver_topic=NULL;
-			receiver_topic=(char *)malloc(event->topic_len+1);
+			receiver_topic=(char *)pvPortMalloc(event->topic_len+1);
 			memset(receiver_topic,0,event->topic_len+1);
 			strncpy(receiver_topic,event->topic,event->topic_len);
 			//ESP_LOGI(TAG, "  topic:[%s]",receiver_topic);
 			process_json(event->data, event->data_len,receiver_topic);
-			free(receiver_topic);
+			vPortFree(receiver_topic);
 			receiver_topic=NULL;
             break;
         case MQTT_EVENT_ERROR:
